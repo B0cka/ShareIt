@@ -28,6 +28,13 @@
             return user;
         }
 
+        @Override
+        public Optional<User> findByEmail(String email) {
+            return storage.values().stream()
+                    .filter(user -> user.getEmail().equals(email))
+                    .findFirst();
+        }
+
         public void deleteById(Long id) {
             storage.remove(id);
         }

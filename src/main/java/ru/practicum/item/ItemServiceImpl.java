@@ -5,9 +5,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.exception.ValidationException;
+import ru.practicum.user.User;
+import ru.practicum.user.UserRepository;
+
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -16,6 +20,7 @@ import java.util.stream.Collectors;
 public class ItemServiceImpl implements ItemService {
 
     private final ItemRepository itemRepository;
+    private final UserRepository userRepository;
 
     @Override
     public ItemDto updateItem(long userId, long itemId, ItemDto itemDto) {
@@ -26,8 +31,8 @@ public class ItemServiceImpl implements ItemService {
             throw new NotFoundException("Item not found");
         }
 
-        if (existingItem.getOwnerId() != userId) {
-            throw new ValidationException("Only owner can edit item");
+        if (!existingItem.getOwnerId().equals(userId)) {
+            throw new NotFoundException("Only owner can edit item");
         }
 
         if (itemDto.getName() != null) {
@@ -40,10 +45,9 @@ public class ItemServiceImpl implements ItemService {
             existingItem.setAvailable(itemDto.getAvailable());
         }
 
-        itemRepository.save(existingItem);
-
-        return ItemMapper.toItemDto(existingItem);
+        return ItemMapper.toItemDto(itemRepository.save(existingItem));
     }
+
 
     public List<ItemDto> searchItems(String text) {
         log.info("request to search {}", text);
@@ -72,10 +76,22 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public ItemDto addNewItem(Long userId, ItemDto itemDto) {
-        log.info("Создание предмета");
         Item item = ItemMapper.toItem(itemDto, userId);
-        Item savedItem = itemRepository.save(item);
-        return ItemMapper.toItemDto(savedItem);
+        if(userRepository.findById(userId).isEmpty()){
+            throw new NotFoundException("User with id " + userId + " not found");
+        }
+        if(itemDto.getAvailable() == null){
+            throw new ValidationException("Available must be not empty!");
+        }
+        if(itemDto.getName() == "" || itemDto.getName() == null){
+            throw new ValidationException("Name must be not empty!");
+        }
+        if(itemDto.getDescription() == null){
+            throw new ValidationException("Description must be not empty!");
+        }
+        item.setOwnerId(userId);
+        Item saved = itemRepository.save(item);
+        return ItemMapper.toItemDto(saved);
     }
 
     @Override

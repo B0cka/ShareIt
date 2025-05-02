@@ -14,7 +14,7 @@ public class ItemRepositoryImpl implements ItemRepository {
     @Override
     public List<Item> findByUserId(long userId) {
         return storage.values().stream()
-                .filter(item -> item.getId() == userId)
+                .filter(item -> Objects.equals(item.getOwnerId(), userId))
                 .collect(Collectors.toList());
     }
 

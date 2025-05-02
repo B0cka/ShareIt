@@ -3,8 +3,11 @@ package ru.practicum.user;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import ru.practicum.exception.ConflictException;
+import ru.practicum.exception.ValidationException;
 
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -29,6 +32,16 @@ class UserServiceImpl implements UserService {
     @Override
     public User saveUser(User user) {
         log.info("Запрос на создание пользователя");
+        validate(user);
+
+        Optional<User> existingUser = repository.findAll().stream()
+                .filter(u -> u.getEmail().equalsIgnoreCase(user.getEmail()))
+                .findFirst();
+
+        if (existingUser.isPresent()) {
+            throw new ConflictException("Email уже используется");
+        }
+
         return repository.save(user);
     }
 
@@ -42,6 +55,14 @@ class UserServiceImpl implements UserService {
             existingUser.setName(userDto.getName());
         }
         if (userDto.getEmail() != null) {
+            Optional<User> userWithEmail = repository.findByEmail(userDto.getEmail());
+            if (userWithEmail.isPresent() && !userWithEmail.get().getId().equals(id)) {
+                throw new ConflictException("Email is already taken by another user");
+            }
+            existingUser.setEmail(userDto.getEmail());
+        }
+
+        if (userDto.getEmail() != null) {
             existingUser.setEmail(userDto.getEmail());
         }
         return repository.save(existingUser);
@@ -52,4 +73,14 @@ class UserServiceImpl implements UserService {
         log.info("Запрос на удаление пользователя id={}", id);
         repository.deleteById(id);
     }
+
+    public void validate(User user){
+        if(user.getEmail() == null){
+            throw new ValidationException("Email not found");
+        }
+        if(!user.getEmail().contains("@")){
+            throw new ValidationException("Email must be with @");
+        }
+    }
+
 }
